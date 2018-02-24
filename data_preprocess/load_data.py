@@ -376,7 +376,50 @@ def load_fq_ma5_ma10_ma20_ma30_ma60_ma120_ma250_ma500_from_tushare(code):
     # else:
     #     return
 
+def load_index_open_close_volume_ma5_vma5_from_tushare(path):
+    '''
+    load index data from tushare
+    :return:ma5,vma5,dates
+    '''
+    f = open(path, 'rb').readlines()[1:]
+    # fq_f = open(path, 'rb').readlines()[1:]
+    raw_open_price = []
+    raw_close_price = []
+    raw_volume = []
+    raw_ma5 = []
+    raw_vma5 = []
+    raw_dates = []
+    for i, line in enumerate(f):
+        line = line.decode('utf-8')
+        try:
+            # index, date, open, close, high, low, volume, code
+            open_price = float(line.split(',')[2])
+            raw_open_price.append(open_price)
 
+            close_price = float(line.split(',')[3])
+            raw_close_price.append(close_price)
+
+            volume = float(line.split(',')[6])
+            raw_volume.append(volume)
+
+            if i < 5:
+                line5_temp = f[:i + 1]
+            else:
+                line5_temp = f[i - 5+1:i+1]
+
+            ma5_temp = [float(m.decode('utf-8').split(',')[3]) for m in line5_temp]
+            raw_ma5.append(numpy.mean(ma5_temp))
+
+            vma5_temp = [float(m.decode('utf-8').split(',')[6]) for m in line5_temp]
+            raw_vma5.append(numpy.mean(vma5_temp))
+
+
+            raw_dates.append(line.split(',')[1])
+        except:
+            continue
+    # return raw_open_price[::-1], raw_close_price[::-1], raw_volume[::-1], raw_ma5[::-1], raw_vma5[::-1], raw_dates[::-1]  # inverse order
+    return raw_open_price, raw_close_price, raw_volume, raw_ma5, raw_vma5, raw_dates
+    # return raw_open_price[5:], raw_close_price[5:], raw_volume[5:], raw_ma5[5:], raw_vma5[5:], raw_dates[5:]
 
 
 
