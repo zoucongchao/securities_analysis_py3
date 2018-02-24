@@ -421,7 +421,178 @@ def load_index_open_close_volume_ma5_vma5_from_tushare(path):
     return raw_open_price, raw_close_price, raw_volume, raw_ma5, raw_vma5, raw_dates
     # return raw_open_price[5:], raw_close_price[5:], raw_volume[5:], raw_ma5[5:], raw_vma5[5:], raw_dates[5:]
 
+def load_volume_from_tushare(path):
+    '''
+    load data from tushare
+    :return:volume, dates
+    '''
+    f = open(path, 'rb').readlines()[1:]
+    raw_data = []
+    raw_dates = []
+    for line in f:
+        line = line.decode('utf-8')
+        try:
+            close_price = float(line.split(',')[5])
+            raw_data.append(close_price)
+            raw_dates.append(line.split(',')[0])
+        except:
+            continue
+    return raw_data[::-1], raw_dates[::-1]  # inverse order
 
+
+def load_all_items_from_tushare(path):
+    '''
+    load data from tushare
+    :return:open,high,close,low,volume,price_change,p_change,ma5,ma10,ma20,v_ma5,v_ma10,v_ma20,turnover;dates
+    '''
+    f = open(path, 'rb').readlines()[1:]
+    raw_data = []
+    raw_dates = []
+    for line in f:
+        line = line.decode('utf-8')
+        try:
+            raw_data.append(line.split(',')[1:])
+            raw_dates.append(line.split(',')[0])
+        except:
+            continue
+    return raw_data[::-1], raw_dates[::-1]  # inverse order
+
+def load_all_item_from_tushare(path):
+    '''
+    load data from tushare
+    :return:open,high,close,low; dates
+    '''
+    f = open(path, 'rb').readlines()[1:]
+    raw_data = []
+    raw_dates = []
+    for line in f:
+        line = line.decode('utf-8')
+        try:
+            raw_data.append(line.split(',')[1:5])
+            raw_dates.append(line.split(',')[0])
+        except:
+            continue
+    return raw_data[::-1], raw_dates[::-1]  # inverse order
+
+
+def split_into_chunks(data, train, predict, step, binary=True, scale=True):
+    X, Y = [], []
+    for i in range(0, len(data), step):
+        try:
+            x_i = data[i:i + train]
+            y_i = data[i + train + predict]
+
+            # Use it only for daily return time series
+            if binary:
+                if y_i > 0.:
+                    y_i = [1., 0.]
+                else:
+                    y_i = [0., 1.]
+
+                if scale: x_i = preprocessing.scale(x_i)
+
+            else:
+                timeseries = np.array(data[i:i + train + predict])
+                if scale: timeseries = preprocessing.scale(timeseries)
+                x_i = timeseries[:-1]
+                y_i = timeseries[-1]
+
+        except:
+            break
+
+        X.append(x_i)
+        Y.append(y_i)
+
+    return X, Y
+
+def get_big_deal_volume(code, date, volume = 400):
+    '''
+    得到大单交易数据
+    :param code:
+    :param date:
+    :param volume:
+    :return:
+    '''
+    # 大单交易数据 取所有大单的差值
+    import tushare as ts
+    big_deals = ts.get_sina_dd(str(code), date=date, vol=volume)
+    if big_deals is None:
+        big_deals = 0
+    else:
+        lines = big_deals.T.to_dict()
+
+        big_volume = 0
+        for key, line in lines.items():
+            if (line['type']) == "卖盘":
+                big_volume -= float(line['volume'])
+            elif (line['type']) == "买盘":
+                big_volume += float(line['volume'])
+        big_deals = big_volume
+    return big_deals/1000000
+
+def shuffle_in_unison(a, b):
+    # courtsey http://stackoverflow.com/users/190280/josh-bleecher-snyder
+
+    assert len(a) == len(b)
+    a = np.array(a)
+    b = np.array(b)
+    shuffled_a = np.empty(a.shape, dtype=a.dtype)
+    shuffled_b = np.empty(b.shape, dtype=b.dtype)
+    permutation = np.random.permutation(len(a))
+    for old_index, new_index in enumerate(permutation):
+        shuffled_a[new_index] = a[old_index]
+        shuffled_b[new_index] = b[old_index]
+    return shuffled_a, shuffled_b
+
+def create_Xt_Yt(X, y, percentage=0.8,retain = 0):
+    '''
+    将数据集划分出训练集和测试集,可以设置retain_testset=22留出22天一个月的数据进行测试
+    :param X:
+    :param y:
+    :param percentage: 分割比例
+    :return:
+    '''
+
+    # retain_testset = 0
+    # retain_testset = 22
+
+    X_train = X[0:int(len(X) * percentage)-int(retain*percentage)]
+    Y_train = y[0:int(len(y) * percentage)-int(retain*percentage)]
+
+    #若用LSTM做预测,不能洗牌
+    #X_train, Y_train = shuffle_in_unison(X_train, Y_train)
+
+    if retain == 0:
+        X_test = X[int(len(X) * percentage):]
+        Y_test = y[int(len(y) * percentage):]
+    else:
+        X_test = X[int(len(X) * percentage)-int(retain*percentage):-retain]
+        Y_test = y[int(len(y) * percentage)-int(retain*percentage):-retain]
+
+
+
+    return X_train, X_test, Y_train, Y_test
+
+def To_DL_datatype(code):
+    '''
+    用于LSTM格式的数据
+    :param code: 股票代码
+    :return: X,y
+    '''
+    import numpy as np
+    path = 'C:/Users/Administrator/stockPriditionProjects/data/'
+    dayline, date = load_data_from_tushare(path + str(code)+'.csv')
+    thirtydayline, dates = load_data_from_tushare(path + str(code) + '_month.csv')
+    X = []
+    y = []
+    for i in range(0, len(dayline) - 8):
+        dat = date[i].split('-')
+        for j, word in enumerate(dates):
+            if word.startswith(dat[0]+'-'+dat[1]):
+                index = j
+        X.append(dayline[i:i+7]+thirtydayline[index-12:index])
+        y.append(dayline[i+7])
+    return np.array(X), np.array(y)
 
 
 
