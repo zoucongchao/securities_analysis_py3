@@ -10,7 +10,7 @@ from sklearn import preprocessing
 import os
 import numpy
 
-
+#下载历史价格***********************************************************************
 def download_from_tushare(code):
     '''
     #宏观经济形势,数字指标1:货币供应量
@@ -44,7 +44,8 @@ def download_from_tushare(code):
         return False
     # 30 day lines
     # ts.get_hist_data(str(code), ktype='M').to_csv(path+"stock_data/"+str(code)+'_month.csv')
-
+    
+#下载复权数据***********************************************************************
 def download_fq_data_from_tushare(code):
     '''
     必须下载历史数据，根据历史数据日期请求复盘数据，这里是前复盘
@@ -80,7 +81,7 @@ def download_fq_data_from_tushare(code):
         return True
     else:
         return False
-    
+#宏观经济指标********************************************************************************************   
 def download_economy():
     import tushare as ts
     path = 'C:/Users/Administrator/stockPriditionProjects/data/'
@@ -104,7 +105,7 @@ def download_economy():
     #存款准备金率
     ts.get_rrr().to_csv(path + 'rrr.csv')
     
-
+#加载本地数据****************************************************************************************
 def load_data(path):
     '''
     load data from quandl
@@ -128,7 +129,7 @@ def load_data(path):
             continue
     return raw_open_data, raw_close_data, raw_dates     #inverse order
 
-#开盘价
+#开盘价***************************************************************************************
 def load_open_price(path):
     '''
     load data from quandl
@@ -147,7 +148,7 @@ def load_open_price(path):
             continue
     return raw_data[::-1], raw_dates[::-1]     #inverse order
 
-#收盘价
+#加载收盘价******************************************************************************************** 
 def load_data_from_tushare(path):
     '''
     load data from tushare
@@ -165,7 +166,7 @@ def load_data_from_tushare(path):
         except:
             continue
     return raw_data[::-1], raw_dates[::-1]  # inverse order
-
+#加载均价和均量********************************************************************************************
 def load_open_close_volume_ma5_vma5_turnover_from_tushare(path):
     '''
     load data from tushare
@@ -205,7 +206,7 @@ def load_open_close_volume_ma5_vma5_turnover_from_tushare(path):
             continue
     return raw_open_price[::-1], raw_close_price[::-1], raw_volume[::-1], \
             raw_ma5[::-1], raw_vma5[::-1], raw_turnover[::-1], raw_dates[::-1]  # inverse order
-
+#加载复权的均价和均量********************************************************************************************
 def load_fq_open_close_volume_ma5_vma5_turnover_from_tushare(path):
     '''
     load fq data from tushare
@@ -277,7 +278,7 @@ def load_fq_open_close_volume_ma5_vma5_turnover_from_tushare(path):
     return raw_open_price, raw_close_price, raw_volume, \
             raw_ma5, raw_vma5, raw_turnover, raw_dates
     # return raw_open_price[5:], raw_close_price[5:], raw_volume[5:], raw_ma5[5:], raw_vma5[5:], raw_dates[5:]
-
+#加载不同周期的均价********************************************************************************************
 def load_fq_ma5_ma10_ma20_ma30_ma60_ma120_ma250_ma500_from_tushare(code):
     '''
     load fq data from tushare
@@ -375,7 +376,7 @@ def load_fq_ma5_ma10_ma20_ma30_ma60_ma120_ma250_ma500_from_tushare(code):
             raw_ma500[::-1], raw_ma_order[::-1], raw_turnover[::-1], raw_dates[::-1]  # inverse order
     # else:
     #     return
-
+#加载不同周期的均均量********************************************************************************************
 def load_index_open_close_volume_ma5_vma5_from_tushare(path):
     '''
     load index data from tushare
@@ -421,6 +422,7 @@ def load_index_open_close_volume_ma5_vma5_from_tushare(path):
     return raw_open_price, raw_close_price, raw_volume, raw_ma5, raw_vma5, raw_dates
     # return raw_open_price[5:], raw_close_price[5:], raw_volume[5:], raw_ma5[5:], raw_vma5[5:], raw_dates[5:]
 
+#加载成交量********************************************************************************************
 def load_volume_from_tushare(path):
     '''
     load data from tushare
@@ -439,6 +441,7 @@ def load_volume_from_tushare(path):
             continue
     return raw_data[::-1], raw_dates[::-1]  # inverse order
 
+#加载所有数据********************************************************************************************
 
 def load_all_items_from_tushare(path):
     '''
@@ -474,7 +477,7 @@ def load_all_item_from_tushare(path):
             continue
     return raw_data[::-1], raw_dates[::-1]  # inverse order
 
-
+#分割数据集********************************************************************************************
 def split_into_chunks(data, train, predict, step, binary=True, scale=True):
     X, Y = [], []
     for i in range(0, len(data), step):
@@ -594,7 +597,144 @@ def To_DL_datatype(code):
         y.append(dayline[i+7])
     return np.array(X), np.array(y)
 
+import errno
+import shutil
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc: # Python >2.5 (except OSError, exc: for Python <2.5)
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else: raise
 
+import time
+
+#蜡烛图数据集***********************************************************************
+def prepare_Kline_imgs_for_X(code,days):
+    import stock_k_line.draw_Kline2 as Kline_img
+    data_path = "./data/stock_data/"
+    stock_path = os.path.join(data_path, code) + '_qfq.csv'
+    stockFile = open(stock_path, 'rb').readlines()[1:]
+    up_percent = 0.015
+    #
+    png_dir = './K_img/%s/' % code
+    png_dir_up = png_dir +'up/'
+    png_dir_down = png_dir + 'down/'
+    #
+    if os.path.isdir(png_dir_up) is not True:
+        mkdir_p(png_dir_up)
+    if os.path.isdir(png_dir_down) is not True:
+        mkdir_p(png_dir_down)
+
+    # 平均数暂时不取
+    # med = median([float(s.split(',')[3])-float(stockFile[i+1].split(',')[3]) for i, s in enumerate(stockFile[:-1])])
+
+    for i, line in enumerate(stockFile[days-1:-3]):  #days-1 因为序号起始从0开始，所以要-1
+        if (days + i + 1) >= len(stockFile):
+            break
+        today_close_price = float(line.split(',')[3])
+        nextday_close_price = float(stockFile[i+1].split(',')[3])
+        next2day_close_price = float(stockFile[i + 2].split(',')[3])
+        next3day_close_price = float(stockFile[i + 3].split(',')[3])
+        up_rule1 = (nextday_close_price - today_close_price)/today_close_price > up_percent
+        up_rule2 = (nextday_close_price - today_close_price) > 0 \
+                    and (next2day_close_price - nextday_close_price) > 0 \
+                    and (next3day_close_price - next2day_close_price) > 0 \
+                    and (next3day_close_price - today_close_price) / today_close_price > up_percent*3
+
+        down_rule1 = (nextday_close_price - today_close_price) / today_close_price <= -up_percent
+        down_rule2 = (next3day_close_price - today_close_price) / today_close_price <= -up_percent*2
+
+        start = time.time()
+        if up_rule1 or up_rule2:
+            # 放入上涨文件夹
+            fig = Kline_img.create_K_line_img(code, days, start_index=stockFile.index(line)+1)
+            png_path = os.path.join(png_dir_up, code) + '_' + line.split(',')[1] + '.png'
+            fig.savefig(png_path,  bbox_inches = 'tight', pad_inches = 0)  # facecolor=fig.get_facecolor(),
+        elif down_rule1 or down_rule2:
+            # 放入下跌
+            fig = Kline_img.create_K_line_img(code, days, start_index=stockFile.index(line)+1)
+            png_path = os.path.join(png_dir_down, code) + '_' + line.split(',')[1] + '.png'
+            fig.savefig(png_path, bbox_inches = 'tight', pad_inches = 0)
+
+        # print 'time is ', time.time() - start
+
+    # #分train val 集合
+    retain_testset = 0
+    # retain_testset = 22
+    percentage = 0.8
+    #
+    png_dir_train_up = png_dir +'train/up/'
+    png_dir_validation_up = png_dir +'validation/up/'
+    png_dir_train_down = png_dir +'train/down/'
+    png_dir_validation_down = png_dir +'validation/down/'
+    #
+    #
+    if os.path.isdir(png_dir_train_up) is not True:
+        mkdir_p(png_dir_train_up)
+    if os.path.isdir(png_dir_validation_up) is not True:
+        mkdir_p(png_dir_validation_up)
+    if os.path.isdir(png_dir_train_down) is not True:
+        mkdir_p(png_dir_train_down)
+    if os.path.isdir(png_dir_validation_down) is not True:
+        mkdir_p(png_dir_validation_down)
+
+
+
+    # 保证训练集配比1：1，复制上涨到图形一次
+    for i, file in enumerate(os.listdir(png_dir_up)):
+
+        downfiles = os.listdir(png_dir_down)
+        if len(os.listdir(png_dir_up)) < len(os.listdir(png_dir_down)):
+            png_path = os.path.join(png_dir_up, file)
+            shutil.copy(png_path, png_path[0:-4] + '_copy.png')
+        elif len(os.listdir(png_dir_up)) > len(os.listdir(png_dir_down)):
+            png_path = os.path.join(png_dir_down, downfiles[i])
+            shutil.copy(png_path, png_path[0:-4] + '_copy.png')
+        else:
+            break
+
+
+    up_files = os.listdir(png_dir_up)
+    down_files = os.listdir(png_dir_down)
+
+    up_train = up_files[0:int(len(up_files) * percentage)-retain_testset]
+    down_train = down_files[0:int(len(down_files) * percentage) - retain_testset]
+
+    #若用LSTM做预测,不能洗牌
+    #X_train, Y_train = shuffle_in_unison(X_train, Y_train)
+
+    if retain_testset == 0:
+        up_val = up_files[int(len(up_files) * percentage):]
+        down_val = down_files[int(len(down_files) * percentage):]
+    else:
+        up_val = up_files[int(len(up_files) * percentage)-retain_testset:-retain_testset]
+        down_val = down_files[int(len(down_files) * percentage)-retain_testset:-retain_testset]
+
+
+    for filename in up_train:
+        source = os.path.join(png_dir_up, filename)
+        target = os.path.join(png_dir_train_up, filename)
+        shutil.move(source, target)
+
+    for filename in down_train:
+        source = os.path.join(png_dir_down, filename)
+        target = os.path.join(png_dir_train_down, filename)
+        shutil.move(source, target)
+
+    for filename in up_val:
+        source = os.path.join(png_dir_up, filename)
+        target = os.path.join(png_dir_validation_up, filename)
+        shutil.move(source, target)
+
+    for filename in down_val:
+        source = os.path.join(png_dir_down, filename)
+        target = os.path.join(png_dir_validation_down, filename)
+        shutil.move(source, target)
+
+    shutil.rmtree(png_dir_up)
+    shutil.rmtree(png_dir_down)
+    print('complete %s img prepare!' % code)
 
 
 

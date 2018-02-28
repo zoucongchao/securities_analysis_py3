@@ -28,7 +28,7 @@ class Extract_Features:
     def __init__(self):
         pass
     
-    #将日期转化为星期
+    #将日期转化为星期*****************************************************************
     def parse_weekday(self, date):
         '''
         :param date:date
@@ -42,7 +42,7 @@ class Extract_Features:
         else:
             raise TypeError('date must be datetime type!')
             
-    #转化为阴历月份       
+    #转化为阴历月份 *****************************************************************      
     def lunar_month(self, date):
         '''
         :param date:date
@@ -55,7 +55,7 @@ class Extract_Features:
         lunar_date = ln.ln_date()
         return lunar_date[1]
     
-    #返回季节
+    #返回季节*****************************************************************
     def season(self, date):
         '''
         :param date:date
@@ -108,7 +108,7 @@ class Extract_Features:
         delta = data['close']
         #return delta[str(date.year)+'-'+str(date.month)+'-'+str(date.day)]
         return delta[date]
-    
+    #年度GDP********************************************************************************
     def gdp_year(self, date):
         data = pd.read_csv('C:/Users/Administrator/stockPriditionProjects/data/gdp_year.csv', index_col='year')
         gdp_year_data = data['gdp']
@@ -129,7 +129,7 @@ class Extract_Features:
             return gdp_year_data[int(date.split('-')[0]) + self.season(date)/10.0]
         else:
             raise TypeError("type of date must be string or datetime.date or datetime.datetime!")
-    #存款准备金率
+    #存款准备金率********************************************************************************
     def rrr(self, date):
         data = pd.read_csv('C:/Users/Administrator/stockPriditionProjects/data/rrr.csv', index_col='date')
         rrr_data = data['now']
@@ -177,7 +177,7 @@ class Extract_Features:
         # no used
         from snownlp import SnowNLP
         # TODO:throw into init()
-        with open('news600841.txt', 'rb') as f:
+        with open('C:/Users/Administrator/stockPriditionProjects/data/news.txt', 'rb') as f:
             data = []
             data = f.readlines()
             #print(type(data))
@@ -208,13 +208,17 @@ class Extract_Features:
         # TODO!
         for i in range(0, len(corpus)):
             # sentiment analysis,result is not very well
-            s = SnowNLP(corpus[i][1].decode('utf-8'))
+            s = SnowNLP(corpus[i][1].decode('gbk'))
             sentiment = s.sentiments
             # one to many mapping
             summary_dict.setdefault(corpus[i][0], []).append(sentiment)
             # print s.sentiments,":",corpus[i][0],corpus[i][1]
         for key in summary_dict:
-            print(key, ":",)
+            """
+            if key is not None:
+                key = key.decode('gbk')
+                """
+            #print(key, ":",)
             for i in summary_dict[key]:
                 print(i,)
             print('')
